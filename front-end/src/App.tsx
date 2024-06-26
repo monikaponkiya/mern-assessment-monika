@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools/production';
 import { message } from 'antd';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+
 import './App.css';
 import Layout from './common/Layout';
 import OrderDetail from './pages/product/orderDetail';

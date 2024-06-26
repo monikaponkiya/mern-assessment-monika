@@ -153,6 +153,7 @@ const ProductDetail: React.FC = () => {
   const setCoupleValue = (coupon: ICoupon) => {
     setSelectedCoupon(coupon);
     setInputCode(coupon.code);
+    setOrderDetails(null);
   };
 
   return (

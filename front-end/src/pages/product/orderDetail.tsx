@@ -29,7 +29,7 @@ const OrderDetail: React.FC = () => {
         <strong>Price:</strong> ₹{orderDetails?.orderValue}
       </p>
       <Button type="primary" onClick={() => navigate(ROUTES.default)}>
-        Back
+        Continue Shopping
       </Button>
     </div>
   );
