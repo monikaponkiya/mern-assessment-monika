@@ -36,81 +36,93 @@ export class ProductEntriesService {
   ) {}
 
   async createInitialProductEntries() {
-    await this.productModel.deleteMany({});
-    await this.sizeModel.deleteMany({});
-    await this.colorModel.deleteMany({});
-    await this.couponModel.deleteMany({});
-    await this.productEntriesModel.deleteMany({});
-
-    const sizes = productSizes;
-    const colors = productColor;
-    const coupon = productCoupons;
-
-    const sizeDocs = await this.sizeModel.insertMany(
-      sizes.map((size) => ({ name: size.name, sequence: size.sequence })),
-    );
-    const colorDocs = await this.colorModel.insertMany(
-      colors.map((name) => ({ name })),
+    const productCount = await this.productModel.countDocuments({});
+    const sizeCount = await this.sizeModel.countDocuments({});
+    const colorCount = await this.colorModel.countDocuments({});
+    const couponCount = await this.couponModel.countDocuments({});
+    const productEntriesCount = await this.productEntriesModel.countDocuments(
+      {},
     );
 
-    await this.couponModel.insertMany(coupon);
+    if (
+      productCount === 0 &&
+      sizeCount === 0 &&
+      colorCount === 0 &&
+      couponCount === 0 &&
+      productEntriesCount === 0
+    ) {
+      const sizes = productSizes;
+      const colors = productColor;
+      const coupon = productCoupons;
 
-    const tShirt = await this.productModel.create({
-      productName: productName.T_SHIRT,
-      productDescription: 'Trendy elegant women T-shirt',
-      productImage: 't-shirt.jpeg',
-      productRate: 4,
-    });
+      const sizeDocs = await this.sizeModel.insertMany(
+        sizes.map((size) => ({ name: size.name, sequence: size.sequence })),
+      );
+      const colorDocs = await this.colorModel.insertMany(
+        colors.map((name) => ({ name })),
+      );
 
-    const jeans = await this.productModel.create({
-      productName: productName.JEANS,
-      productDescription: 'Trendy elegant women Jeans',
-      productImage: 'jeans.jpeg',
-      productRate: 3,
-    });
+      await this.couponModel.insertMany(coupon);
 
-    const priceChart1 = {
-      Red: [20, 30, 40, 50, 60],
-      Blue: [70, 80, 90, 100, 110],
-      White: [120, 130, 140, null, null],
-      Black: [150, 160, 170, 180, null],
-    };
+      const tShirt = await this.productModel.create({
+        productName: productName.T_SHIRT,
+        productDescription: 'Trendy elegant women T-shirt',
+        productImage: 't-shirt.jpeg',
+        productRate: 4,
+      });
 
-    const priceChart2 = {
-      White: [100, 200, null],
-      Black: [null, 300, 400],
-    };
+      const jeans = await this.productModel.create({
+        productName: productName.JEANS,
+        productDescription: 'Trendy elegant women Jeans',
+        productImage: 'jeans.jpeg',
+        productRate: 3,
+      });
 
-    const entries1 = [];
+      const priceChart1 = {
+        Red: [20, 30, 40, 50, 60],
+        Blue: [70, 80, 90, 100, 110],
+        White: [120, 130, 140, null, null],
+        Black: [150, 160, 170, 180, null],
+      };
 
-    for (const [color, prices] of Object.entries(priceChart1)) {
-      const colorId = colorDocs.find((c) => c.name === color)._id;
-      for (let i = 0; i < prices.length; i++) {
-        const price = prices[i];
-        if (price !== null) {
-          const sizeId = sizeDocs[i]._id;
-          entries1.push({ productId: tShirt._id, sizeId, colorId, price });
+      const priceChart2 = {
+        White: [100, 200, null],
+        Black: [null, 300, 400],
+      };
+
+      const entries1 = [];
+
+      for (const [color, prices] of Object.entries(priceChart1)) {
+        const colorId = colorDocs.find((c) => c.name === color)._id;
+        for (let i = 0; i < prices.length; i++) {
+          const price = prices[i];
+          if (price !== null) {
+            const sizeId = sizeDocs[i]._id;
+            entries1.push({ productId: tShirt._id, sizeId, colorId, price });
+          }
         }
       }
-    }
 
-    await this.productEntriesModel.insertMany(entries1);
+      await this.productEntriesModel.insertMany(entries1);
 
-    const entries2 = [];
+      const entries2 = [];
 
-    for (const [color, prices] of Object.entries(priceChart2)) {
-      const colorId = colorDocs.find((c) => c.name === color)._id;
-      for (let i = 0; i < prices.length; i++) {
-        const price = prices[i];
-        if (price !== null) {
-          const sizeId = sizeDocs[i]._id;
-          entries2.push({ productId: jeans._id, sizeId, colorId, price });
+      for (const [color, prices] of Object.entries(priceChart2)) {
+        const colorId = colorDocs.find((c) => c.name === color)._id;
+        for (let i = 0; i < prices.length; i++) {
+          const price = prices[i];
+          if (price !== null) {
+            const sizeId = sizeDocs[i]._id;
+            entries2.push({ productId: jeans._id, sizeId, colorId, price });
+          }
         }
       }
-    }
 
-    await this.productEntriesModel.insertMany(entries2);
-    console.log('Database seeded!');
+      await this.productEntriesModel.insertMany(entries2);
+      console.log('Database seeded!');
+    } else {
+      console.log('Database already contains data, seeding skipped');
+    }
   }
 
   async findAllProduct() {

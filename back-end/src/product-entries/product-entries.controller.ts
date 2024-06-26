@@ -19,7 +19,7 @@ export class ProductEntriesController {
   })
   @ResponseMessage(PRODUCT_LIST)
   @HttpCode(statusOk)
-  async getStudentList() {
+  async getProductList() {
     return await this.productEntriesService.findAllProduct();
   }
 

@@ -1,8 +1,9 @@
-import { CheckCircleOutlined } from '@ant-design/icons';
-import { Button, Descriptions, Image, Input, Rate, Space, Tabs, Tag, message } from 'antd';
+import { Button, Descriptions, Image, Rate, Space, Tabs, Tag, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import OrderDetails from '../../common/component/orderDetail';
+import ProductCoupon from '../../common/component/productCoupon';
 import UserModal from '../../common/modal/user';
 import {
   IColorAndSizeArray,
@@ -72,6 +73,9 @@ const ProductDetail: React.FC = () => {
       setSelectedColor(colorData.colorId);
       setPrice(colorData.price);
       setProductEntryId(colorData.productEntryId);
+      setInputCode('');
+      setOrderDetails(null);
+      setSelectedCoupon(null);
     }
   };
 
@@ -180,6 +184,7 @@ const ProductDetail: React.FC = () => {
                 items={sizeItems}
               />
             </Descriptions.Item>
+
             <Descriptions.Item className="desc-item" label="Available Colors">
               {availableColors.length > 0 ? (
                 <Space size="small">
@@ -198,65 +203,29 @@ const ProductDetail: React.FC = () => {
                 'Select a size to see available colors'
               )}
             </Descriptions.Item>
-            <div className="coupon-container">
-              <p>Available Coupons</p>
-              <Space size="middle" direction="horizontal">
-                {coupons?.map((coupon) => (
-                  <Tag
-                    style={{ width: 132, textAlign: 'center', cursor: 'pointer' }}
-                    key={coupon._id}
-                    color={
-                      coupon.code === (selectedCoupon && selectedCoupon?.code) ? 'green' : 'default'
-                    }
-                    onClick={() => setCoupleValue(coupon)}
-                  >
-                    {coupon.code} - {coupon.discountPercentage}% off
-                  </Tag>
-                ))}
-              </Space>
-              {selectedCoupon && <p className="coupon-desc">{selectedCoupon.description}</p>}
-              <div className="coupon-input">
-                <Input placeholder="Enter coupon code" value={inputCode} style={{ width: 200 }} />
-                <Button type="primary" onClick={handleApplyCoupon}>
-                  Apply
-                </Button>
-                {orderDetails?.isCoupon_applied && (
-                  <CheckCircleOutlined style={{ color: 'green', marginLeft: 5 }} />
-                )}
-              </div>
-              <p
-                className="coupon-desc"
-                style={{ color: orderDetails?.isCoupon_applied ? 'green' : 'red' }}
-              >
-                {orderDetails ? orderDetails.message : ''}
-              </p>
-            </div>
-            <div className="order-container">
-              <h4>Order Details</h4>
-              <div className="order-item">
-                <span>Total:</span>
-                <span>₹{price}</span>
-              </div>
-              {orderDetails?.isCoupon_applied && (
-                <div className="order-item discount">
-                  <span>Discount Price:</span>
-                  <span>-₹{orderDetails.discountedPrice}</span>
-                </div>
-              )}
-              <div className="order-item amount-payable">
-                <span>Amount Payable:</span>
-                <span>₹{orderDetails?.amount_payable ?? price}</span>
-              </div>
-              <Button className="buy-now" type="primary" onClick={handleConfirmOrder}>
-                Confirm Order
-              </Button>
-            </div>
+
+            <ProductCoupon
+              inputCode={inputCode}
+              coupons={coupons}
+              selectedCoupon={selectedCoupon}
+              setCoupleValue={setCoupleValue}
+              handleApplyCoupon={handleApplyCoupon}
+              orderDetails={orderDetails}
+            />
+
+            <OrderDetails
+              price={price}
+              orderDetails={orderDetails}
+              handleConfirmOrder={handleConfirmOrder}
+            />
           </div>
         </div>
       </div>
 
       {/* User email modal */}
-      <UserModal visible={visible} handleCancel={handleCancel} onFinish={handleFinish} />
+      {visible && (
+        <UserModal visible={visible} handleCancel={handleCancel} onFinish={handleFinish} />
+      )}
     </div>
   );
 };
