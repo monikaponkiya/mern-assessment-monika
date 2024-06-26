@@ -18,6 +18,7 @@ import { Coupon, CouponDocument } from 'src/coupon/schema/coupon.schema';
 import { AuthExceptions } from 'src/common/helpers/exceptions/auth.exception';
 import { statusBadRequest } from 'src/common/constants/response.status.constant';
 import { PRODUCT_NOT_EXIST } from 'src/common/constants/response.constants';
+import { tableLookup } from 'src/common/aggregationHelper';
 
 @Injectable()
 export class ProductEntriesService {
@@ -115,33 +116,27 @@ export class ProductEntriesService {
   async findAllProduct() {
     try {
       const aggregateQuery = [];
-      aggregateQuery.push(
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'productId',
-            foreignField: '_id',
-            as: 'productData',
-          },
-        },
-        {
-          $unwind: {
-            path: '$productData',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $group: {
-            _id: '$productId',
-            productName: {
-              $first: '$productData.productName',
-            },
-            productImage: {
-              $first: '$productData.productImage',
-            },
-          },
-        },
+
+      tableLookup(
+        aggregateQuery,
+        'products',
+        'productId',
+        '_id',
+        'productData',
+        true,
       );
+
+      aggregateQuery.push({
+        $group: {
+          _id: '$productId',
+          productName: {
+            $first: '$productData.productName',
+          },
+          productImage: {
+            $first: '$productData.productImage',
+          },
+        },
+      });
       const productList = await this.productEntriesModel.aggregate(
         aggregateQuery,
       );
@@ -163,54 +158,47 @@ export class ProductEntriesService {
         );
       }
       const aggregateQuery = [];
+
+      aggregateQuery.push({
+        $match: {
+          productId: new mongoose.Types.ObjectId(productId),
+        },
+      });
+
+      tableLookup(
+        aggregateQuery,
+        'products',
+        'productId',
+        '_id',
+        'productData',
+        true,
+      );
+      tableLookup(
+        aggregateQuery,
+        'sizes',
+        'sizeId',
+        '_id',
+        'productSize',
+        true,
+      );
+      tableLookup(
+        aggregateQuery,
+        'colors',
+        'colorId',
+        '_id',
+        'productColor',
+        true,
+      );
+      tableLookup(
+        aggregateQuery,
+        'products',
+        'productId',
+        '_id',
+        'productData',
+        true,
+      );
+
       aggregateQuery.push(
-        {
-          $match: {
-            productId: new mongoose.Types.ObjectId(productId),
-          },
-        },
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'productId',
-            foreignField: '_id',
-            as: 'productData',
-          },
-        },
-        {
-          $unwind: {
-            path: '$productData',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $lookup: {
-            from: 'sizes',
-            localField: 'sizeId',
-            foreignField: '_id',
-            as: 'productSize',
-          },
-        },
-        {
-          $unwind: {
-            path: '$productSize',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $lookup: {
-            from: 'colors',
-            localField: 'colorId',
-            foreignField: '_id',
-            as: 'productColor',
-          },
-        },
-        {
-          $unwind: {
-            path: '$productColor',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
         {
           $group: {
             _id: '$productSize._id',
@@ -268,9 +256,6 @@ export class ProductEntriesService {
             productImage: {
               $first: '$productImage',
             },
-            productSize: {
-              $push: '$productSize',
-            },
             sizeWiseColorPriceArray: {
               $push: {
                 _id: '$_id',
@@ -281,9 +266,11 @@ export class ProductEntriesService {
           },
         },
       );
+
       const productDetails = await this.productEntriesModel.aggregate(
         aggregateQuery,
       );
+
       return productDetails[0];
     } catch (error) {
       throw AuthExceptions.customException(error.message, statusBadRequest);

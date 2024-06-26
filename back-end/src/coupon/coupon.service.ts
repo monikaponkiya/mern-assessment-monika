@@ -1,6 +1,17 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import {
+  COUPON_APPLIED,
+  COUPON_FIRST50,
+  COUPON_NOT_APPLIED,
+  COUPON_PATRON50,
+  COUPON_PATRON50_4,
+  COUPON_REPEAT80,
+  INVALID_COUPON,
+  PRODUCT_NOT_EXIST,
+  USER_EMAIL,
+} from 'src/common/constants/response.constants';
 import { statusBadRequest } from 'src/common/constants/response.status.constant';
 import { AuthExceptions } from 'src/common/helpers/exceptions/auth.exception';
 import { CouponAppliedDto } from 'src/order/dto/coupon-applied.dto';
@@ -10,6 +21,7 @@ import {
   ProductEntriesDocument,
 } from 'src/product-entries/schema/product-entries.schema';
 import { Coupon, CouponDocument } from './schema/coupon.schema';
+import { productCoupon } from 'src/common/constants/product.constants';
 
 @Injectable()
 export class CouponService {
@@ -37,13 +49,11 @@ export class CouponService {
         _id: couponAppliedDto.productEntryId,
       });
       if (!productEntry) {
-        throw new BadRequestException("Product doesn't exist!");
+        throw new BadRequestException(PRODUCT_NOT_EXIST);
       }
 
       if (!couponAppliedDto.email) {
-        throw new BadRequestException(
-          'Please provide user email to check eligibility.',
-        );
+        throw new BadRequestException(USER_EMAIL);
       }
 
       const couponExist = await this.couponModel.findOne({
@@ -51,10 +61,7 @@ export class CouponService {
       });
 
       if (!couponExist) {
-        throw AuthExceptions.customException(
-          'Invalid Coupon code',
-          statusBadRequest,
-        );
+        throw AuthExceptions.customException(INVALID_COUPON, statusBadRequest);
       }
 
       const isEligible = await this.checkCouponEligibility(
@@ -75,9 +82,7 @@ export class CouponService {
       }
 
       return {
-        message: isCoupon_applied
-          ? 'Coupon applied successfully'
-          : 'No discount shall be applied!!',
+        message: isCoupon_applied ? COUPON_APPLIED : COUPON_NOT_APPLIED,
         discountedPrice,
         isCoupon_applied,
         amount_payable,
@@ -98,40 +103,35 @@ export class CouponService {
       email: couponAppliedDto.email,
       couponId: couponAppliedDto.couponId,
     });
-    console.log('userOrdersCount: ', userOrdersCount);
+
     switch (coupon.code) {
-      case 'FIRST50':
+      case productCoupon.FIRST50:
         if (userOrdersCount >= 1) {
-          throw new BadRequestException('You can use only on first order');
+          throw new BadRequestException(COUPON_FIRST50);
         }
         return true;
 
-      case 'PATRON50':
+      case productCoupon.PATRON50:
         if (userOrdersCount < 4) {
-          throw new BadRequestException(
-            'You can use after making more than 4 orders',
-          );
+          throw new BadRequestException(COUPON_PATRON50);
         }
         if (couponUsageCount >= 1) {
-          throw new BadRequestException('This coupon has already been used');
+          throw new BadRequestException(COUPON_PATRON50_4);
         }
         return true;
 
-      case 'REPEAT80':
+      case productCoupon.REPEAT80:
         const repeatOrder = await this.orderModel.findOne({
           email: couponAppliedDto.email,
           productEntryId: couponAppliedDto.productEntryId,
         });
         if (!repeatOrder) {
-          throw new BadRequestException('You are not eligible for this offer');
+          throw new BadRequestException(COUPON_REPEAT80);
         }
         return true;
 
       default:
-        throw AuthExceptions.customException(
-          'Invalid Coupon code',
-          statusBadRequest,
-        );
+        throw AuthExceptions.customException(INVALID_COUPON, statusBadRequest);
     }
   }
 }

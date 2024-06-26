@@ -6,6 +6,8 @@ import { AuthExceptions } from 'src/common/helpers/exceptions/auth.exception';
 import { User, UserDocument } from 'src/user/schema/user.schema';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { Order, OrderDocument } from './schemas/order.schema';
+import { tableLookup } from 'src/common/aggregationHelper';
+import { ORDER_NOT_FOUND } from 'src/common/constants/response.constants';
 
 @Injectable()
 export class OrderService {
@@ -35,104 +37,78 @@ export class OrderService {
         _id: new mongoose.Types.ObjectId(orderId),
       });
       if (!orderData) {
-        throw AuthExceptions.customException(
-          'Order not found',
-          statusBadRequest,
-        );
+        throw AuthExceptions.customException(ORDER_NOT_FOUND, statusBadRequest);
       }
       const aggregateQuery = [];
-      aggregateQuery.push(
-        {
-          $match: {
-            _id: new mongoose.Types.ObjectId(orderId),
-          },
+
+      aggregateQuery.push({
+        $match: {
+          _id: new mongoose.Types.ObjectId(orderId),
         },
-        {
-          $lookup: {
-            from: 'productEntries',
-            localField: 'productEntryId',
-            foreignField: '_id',
-            as: 'productEntries',
-          },
-        },
-        {
-          $unwind: {
-            path: '$productEntries',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $lookup: {
-            from: 'products',
-            localField: 'productEntries.productId',
-            foreignField: '_id',
-            as: 'productDetail',
-          },
-        },
-        {
-          $unwind: {
-            path: '$productDetail',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $lookup: {
-            from: 'sizes',
-            localField: 'productEntries.sizeId',
-            foreignField: '_id',
-            as: 'size',
-          },
-        },
-        {
-          $unwind: {
-            path: '$size',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $lookup: {
-            from: 'colors',
-            localField: 'productEntries.colorId',
-            foreignField: '_id',
-            as: 'color',
-          },
-        },
-        {
-          $unwind: {
-            path: '$color',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        {
-          $group: {
-            _id: '$_id',
-            productEntryId: {
-              $first: '$productEntryId',
-            },
-            email: {
-              $first: '$email',
-            },
-            orderValue: {
-              $first: '$orderValue',
-            },
-            productName: {
-              $first: '$productDetail.productName',
-            },
-            productDescription: {
-              $first: '$productDetail.productDescription',
-            },
-            productImage: {
-              $first: '$productDetail.productImage',
-            },
-            size: {
-              $first: '$size.name',
-            },
-            color: {
-              $first: '$color.name',
-            },
-          },
-        },
+      });
+
+      tableLookup(
+        aggregateQuery,
+        'productEntries',
+        'productEntryId',
+        '_id',
+        'productEntries',
+        true,
       );
+      tableLookup(
+        aggregateQuery,
+        'products',
+        'productEntries.productId',
+        '_id',
+        'productDetail',
+        true,
+      );
+      tableLookup(
+        aggregateQuery,
+        'sizes',
+        'productEntries.sizeId',
+        '_id',
+        'size',
+        true,
+      );
+      tableLookup(
+        aggregateQuery,
+        'colors',
+        'productEntries.colorId',
+        '_id',
+        'color',
+        true,
+      );
+
+      aggregateQuery.push({
+        $group: {
+          _id: '$_id',
+          productEntryId: {
+            $first: '$productEntryId',
+          },
+          email: {
+            $first: '$email',
+          },
+          orderValue: {
+            $first: '$orderValue',
+          },
+          productName: {
+            $first: '$productDetail.productName',
+          },
+          productDescription: {
+            $first: '$productDetail.productDescription',
+          },
+          productImage: {
+            $first: '$productDetail.productImage',
+          },
+          size: {
+            $first: '$size.name',
+          },
+          color: {
+            $first: '$color.name',
+          },
+        },
+      });
       const userOrder = await this.orderModel.aggregate(aggregateQuery);
       return userOrder[0];
     } catch (error) {

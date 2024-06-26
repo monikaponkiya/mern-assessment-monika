@@ -1,20 +1,9 @@
 import { CheckCircleOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Descriptions,
-  Form,
-  Image,
-  Input,
-  Modal,
-  Rate,
-  Space,
-  Tabs,
-  Tag,
-  message
-} from 'antd';
-import { useEffect, useState } from 'react';
+import { Button, Descriptions, Image, Input, Rate, Space, Tabs, Tag, message } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import UserModal from '../../common/modal/user';
 import {
   IColorAndSizeArray,
   ICoupon,
@@ -53,45 +42,50 @@ const ProductDetail: React.FC = () => {
 
   useEffect(() => {
     if (data) {
-      const defaultSize = data.productSize[0]._id;
+      const defaultSize = data.sizeWiseColorPriceArray[0]._id;
       setSelectedSize(defaultSize);
+      const defaultColor = data.sizeWiseColorPriceArray[0].colorAndSizeArray;
+      setSelectedColor(defaultColor[0].colorId);
+      setAvailableColors(defaultColor);
+      setPrice(defaultColor[0].price);
+      setProductEntryId(defaultColor[0].productEntryId);
     }
   }, [data]);
 
-  useEffect(() => {
-    if (data && selectedSize) {
-      const sizeData = data.sizeWiseColorPriceArray.find((item) => item._id === selectedSize);
-      if (sizeData) {
-        setAvailableColors(sizeData.colorAndSizeArray);
-        const defaultColor = sizeData.colorAndSizeArray[0].colorId;
-        setSelectedColor(defaultColor);
-        setPrice(sizeData.colorAndSizeArray[0].price);
-        setInputCode('');
-        setOrderDetails(null);
-        setSelectedCoupon(null);
-      }
+  const handleSizeChange = (sizeId: string) => {
+    const sizeData = data?.sizeWiseColorPriceArray.find((item) => item._id === sizeId);
+    if (sizeData) {
+      setSelectedSize(sizeId);
+      setAvailableColors(sizeData.colorAndSizeArray);
+      const defaultColor = sizeData.colorAndSizeArray[0].colorId;
+      setSelectedColor(defaultColor);
+      setPrice(sizeData.colorAndSizeArray[0].price);
+      setInputCode('');
+      setOrderDetails(null);
+      setSelectedCoupon(null);
     }
-  }, [data, selectedSize]);
+  };
 
-  useEffect(() => {
-    if (data && selectedSize && selectedColor) {
-      const sizeData = data.sizeWiseColorPriceArray.find((item) => item._id === selectedSize);
-      if (sizeData) {
-        const colorData = sizeData.colorAndSizeArray.find((item) => item.colorId === selectedColor);
-        if (colorData) {
-          setPrice(colorData.price);
-          setProductEntryId(colorData.productEntryId);
-        }
-      }
+  const handleChangeColor = (colorId: string) => {
+    const colorData = availableColors.find((item) => item.colorId === colorId);
+    if (colorData) {
+      setSelectedColor(colorData.colorId);
+      setPrice(colorData.price);
+      setProductEntryId(colorData.productEntryId);
     }
-  }, [data, selectedSize, selectedColor]);
+  };
 
-  const sizeItems = data?.productSize.map((size) => ({
-    key: size._id,
-    label: size.name,
-    children: null
-  }));
+  const sizeItems = useMemo(
+    () =>
+      data?.sizeWiseColorPriceArray.map((size) => ({
+        key: size._id,
+        label: size.size,
+        children: null
+      })),
+    [data]
+  );
 
+  // check user applied coupon availability
   const handleApplyCoupon = () => {
     if (!inputCode) {
       message.error('Please select coupon code');
@@ -101,14 +95,9 @@ const ProductDetail: React.FC = () => {
       setVisible(true);
       return;
     }
-    const coupon = coupons?.find((c) => c.code === inputCode);
-    if (!coupon) {
-      message.error('Invalid coupon code!');
-      return;
-    }
     const couponDetails: ICouponReq = {
       productEntryId: productEntryId,
-      couponId: coupon._id,
+      couponId: selectedCoupon?._id ?? null,
       email: userEmail
     };
     couponAppliedMutate(couponDetails, {
@@ -122,6 +111,7 @@ const ProductDetail: React.FC = () => {
     });
   };
 
+  // user confirm order
   const handleConfirmOrder = () => {
     if (!userEmail) {
       setVisible(true);
@@ -129,7 +119,7 @@ const ProductDetail: React.FC = () => {
     }
     const orderData: IOrderReq = {
       productEntryId: productEntryId,
-      couponId: orderDetails && orderDetails.isCoupon_applied ? selectedCoupon?._id : null,
+      couponId: orderDetails?.isCoupon_applied ? selectedCoupon?._id : null,
       email: userEmail,
       orderValue: orderDetails?.amount_payable ?? price
     };
@@ -145,7 +135,7 @@ const ProductDetail: React.FC = () => {
     setVisible(false);
   };
 
-  const onFinish = (values: IUser) => {
+  const handleFinish = (values: IUser) => {
     setVisible(false);
     setUserEmail(values.email);
   };
@@ -186,7 +176,7 @@ const ProductDetail: React.FC = () => {
               <Tabs
                 size="small"
                 defaultActiveKey={selectedSize}
-                onChange={(key) => setSelectedSize(key)}
+                onChange={(key) => handleSizeChange(key)}
                 items={sizeItems}
               />
             </Descriptions.Item>
@@ -197,7 +187,7 @@ const ProductDetail: React.FC = () => {
                     <Tag
                       key={color.colorId}
                       color={color.colorId === selectedColor ? 'blue' : 'default'}
-                      onClick={() => setSelectedColor(color.colorId)}
+                      onClick={() => handleChangeColor(color.colorId)}
                       style={{ width: 50, textAlign: 'center', cursor: 'pointer' }}
                     >
                       {color.color}
@@ -264,47 +254,9 @@ const ProductDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
       {/* User email modal */}
-      <Modal open={visible} title="" onCancel={handleCancel} footer={[]}>
-        <div className="container-add">
-          <Form
-            layout="vertical"
-            name="add-user"
-            style={{
-              maxWidth: 500,
-              width: 400
-            }}
-            initialValues={{
-              remember: true
-            }}
-            onFinish={onFinish}
-            autoComplete="off"
-          >
-            <Form.Item
-              wrapperCol={{ md: 24 }}
-              label="User Email"
-              name="email"
-              rules={[
-                {
-                  required: true,
-                  message: 'Please enter email'
-                },
-                {
-                  type: 'email',
-                  message: 'Please enter valid email'
-                }
-              ]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item>
-              <Button type="primary" htmlType="submit">
-                Submit
-              </Button>
-            </Form.Item>
-          </Form>
-        </div>
-      </Modal>
+      <UserModal visible={visible} handleCancel={handleCancel} onFinish={handleFinish} />
     </div>
   );
 };

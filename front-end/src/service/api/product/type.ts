@@ -11,7 +11,6 @@ export interface IProductDetail {
   productDescription: string;
   productRate: number;
   productImage: string;
-  productSize: IProductSize[];
   sizeWiseColorPriceArray: ISizeWiseColorPriceArray[];
 }
 
@@ -47,7 +46,7 @@ export interface ICoupon {
 
 export interface ICouponReq {
   productEntryId: string;
-  couponId: string;
+  couponId: string | null;
   email: string;
 }
 
